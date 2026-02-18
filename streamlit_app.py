@@ -137,7 +137,7 @@ def show_offers():
         
     with col1:
         st.markdown("### VIP")
-        st.markdown(f"**Limite** : {PLAN_LIMITS['vip']} messages / 12 heure")
+        st.markdown(f"**Limite** : {PLAN_LIMITS['vip']} messages / 12h eure")
         st.markdown(f"**Prix** : {PLAN_PRICES['vip']}€ / mois")
         st.info("Temps de réponse plus rapide")
         st.success("Redirection vers Discord pour acheter l'offre VIP.")
@@ -163,29 +163,79 @@ def show_offers():
 
 # ================= LOGIN / REGISTER =================
 if not st.session_state.logged_in:
-    st.title("🔐 HistoriScience")
-    
-    if st.button("Nos offres"):
+    st.markdown("## Bienvenue sur 🌍 HistoriScience", unsafe_allow_html=True)
+    st.markdown(
+        "💡 **HistoriScience** est une IA spécialisée en sciences et histoire, "
+        "conçue pour les passionnés, les élèves et les étudiants."
+    )
+
+    if st.button("📦 Nos offres"):
         show_offers()
         st.stop()
 
+    st.markdown("---")
+    st.info('Tu pourras soit continuer en invité soit t\'inscrire/se connecter en cliquant sur le bouton "Continuer en tant qu\'invité"')
+
+    if st.button("👤 Continuer en tant qu'invité"):
+        st.session_state.logged_in = True
+        st.session_state.current_user = "Invité"
+        st.session_state.admin_view = False
+        st.session_state.guest_questions = 0
+        st.session_state.mode = "Étudiant"
+        st.session_state.plan = "free"
+        st.session_state.show_guest_intro = True  # Pour afficher la présentation du mode invité
+        st.rerun()  # Recharge la page pour passer à l'affichage invité
+
+    # On stoppe ici seulement si l'utilisateur n'a pas encore cliqué sur "Continuer en tant qu'invité"
+    st.stop()
+
+
+# ================= MODE INVITÉ - PRÉSENTATION =================
+if st.session_state.logged_in and st.session_state.current_user == "Invité":
+    if "show_guest_intro" in st.session_state and st.session_state.show_guest_intro:
+
+        st.markdown("---")
+        st.subheader("🔑 Mode Invité")
+        st.info("Tu peux tester l'IA sans créer de profil, limité à 5 questions.")
+
+        col1, col2, col3 = st.columns(3)
+
+        if col1.button("🔐 Se connecter / Créer un compte"):
+            st.session_state.show_guest_intro = False
+            st.session_state.go_to_auth_page = True
+            st.rerun()
+
+        if col2.button("➡️ Passer la connexion / inscription"):
+            st.session_state.show_guest_intro = False
+            st.rerun()
+
+        if col3.button("⬅️ Revenir à l'accueil"):
+            st.session_state.show_guest_intro = False
+            st.session_state.logged_in = False
+            st.rerun()
+
+        st.stop()
+
+
+
+# ================= PAGE CONNEXION / INSCRIPTION =================
+if st.session_state.get("go_to_auth_page", False):
+
+    st.title("🔐 Connexion ou inscription")
+
     tab1, tab2 = st.tabs(["Connexion", "Créer un profil"])
+
     with tab1:
         st.subheader("Connexion")
-        user = st.text_input("Nom d'utilisateur")
-        pwd = st.text_input("Mot de passe", type="password")
+        user = st.text_input("Nom d'utilisateur", key="login_user")
+        pwd = st.text_input("Mot de passe", type="password", key="login_pwd")
+
         if st.button("Se connecter"):
             if user in users and check_password(pwd, users[user]["password"]):
-                placeholder = st.empty()
-                for i in range(1, 101, 5):
-                    placeholder.progress(i)
-                    placeholder.text(f"Connexion en cours... {i}%")
-                    time.sleep(0.01)
-                placeholder.empty()
-                st.session_state.logged_in = True
                 st.session_state.current_user = user
                 st.session_state.plan = users[user].get("plan", "free")
                 st.session_state.admin_view = users[user]["usage"].lower() == "administrateur"
+                del st.session_state["go_to_auth_page"]
                 st.success(f"Bienvenue {user} !")
                 st.rerun()
             else:
@@ -193,19 +243,24 @@ if not st.session_state.logged_in:
 
     with tab2:
         st.subheader("Créer un profil")
+
         new_user = st.text_input("Nom d'utilisateur", key="new_user")
         new_pwd = st.text_input("Mot de passe", type="password", key="new_pwd")
         age = st.number_input("Âge (≥ 13 ans)", min_value=8, max_value=120)
-        email = st.text_input("Adresse e-mail")
-        usage = st.selectbox("Pourquoi vas-tu utiliser l'IA ?", ["Études", "Travail", "Culture générale", "Personnel"])
+        email = st.text_input("Adresse e-mail", key="register_email")
+        usage = st.selectbox(
+            "Pourquoi vas-tu utiliser l'IA ?",
+            ["Études", "Travail", "Culture générale", "Personnel"]
+        )
         photo = st.file_uploader("Photo de profil", type=["jpg", "png", "jpeg"])
-        plan_choice = st.selectbox("Choisis ton plan", ["free"] + PLAN_NAMES)
 
         if st.button("Créer le profil"):
             if new_user in users:
                 st.error("Utilisateur déjà existant")
+
             elif not validate_email(email):
                 st.error("Adresse e-mail invalide")
+
             elif new_user and new_pwd and age >= 13:
                 photo_path = ""
                 if photo:
@@ -213,34 +268,38 @@ if not st.session_state.logged_in:
                     photo_path = f"profiles/{new_user}.png"
                     img = Image.open(photo)
                     img.save(photo_path)
+
                 users[new_user] = {
                     "password": hash_password(new_pwd),
                     "usage": usage,
                     "photo": photo_path,
                     "email": email,
                     "age": age,
-                    "plan": plan_choice.lower()
+                    "plan": "free"
                 }
+
                 save_json(USERS_FILE, users)
                 st.success("Profil créé avec succès !")
+
             else:
                 st.warning("Remplis tous les champs correctement (âge ≥13 et email valide)")
 
-    st.markdown("---")
-    st.subheader("🔑 Connexion rapide / Invité")
-    st.info("Tu peux tester l'IA sans créer de profil, limité à 5 questions.")
-    if "guest_questions" not in st.session_state:
-        st.session_state.guest_questions = 0
-    if st.button("Continuer en tant qu'invité"):
-        st.session_state.logged_in = True
-        st.session_state.current_user = "Invité"
-        st.session_state.admin_view = False
-        st.session_state.guest_questions = 0
-        st.session_state.mode = "Étudiant"
-        st.session_state.plan = "free"
-        st.success("Bienvenue Invité ! Tu peux poser 5 questions maximum.")
-        st.rerun()
     st.stop()
+
+# ================= AJOUT ADMIN PAR DÉFAUT =================
+if "magikarpe" not in users:
+    users["magikarpe"] = {
+        "password": hash_password("1234"),   # mot de passe par défaut
+        "usage": "Administrateur",
+        "photo": "",
+        "email": "admin@example.com",
+        "age": 30,
+        "plan": "ultimate",  # plan admin
+    }
+    save_json(USERS_FILE, users)
+
+
+
 
 
 #  BIOGRAPHIES & GUIDE 
@@ -455,18 +514,27 @@ if question:
                 if not isinstance(logs, list):
                     logs = []
 
-                # demande à GPT
+                # demande à GPT avec prompt strict
                 try:
-                    response = client.chat.completions.create(
+                    response = openai.ChatCompletion.create(
                         model=MODEL_NAME,
                         messages=[
-                            {"role": "system", "content": "Tu es expert en sciences et histoire. Réponds en français."},
-                            {"role": "user", "content": build_prompt(question)}
+                            {
+                                "role": "system",
+                                "content": (
+                                    "Tu es un expert en sciences et histoire. "
+                                    "Réponds uniquement à la question posée, de manière précise et concise. "
+                                    "Ne divague pas, n’invente pas d’informations et reste factuel. "
+                                    "Si la question est vague ou ambiguë, demande des clarifications plutôt que de deviner. "
+                                    "Réponds en français, sous forme claire et structurée."
+                                )
+                            },
+                            {"role": "user", "content": question}
                         ],
-                        temperature=0.7,
-                        max_tokens=1000  
+                        temperature=0.0,   # température basse pour limiter la créativité
+                        max_tokens=1000
                     )
-                    answer = response.choices[0].message.content
+                    answer = response.choices[0].message.content.strip()
                 except Exception as e:
                     answer = f"Erreur lors de la requête à l'IA : {e}"
 
