@@ -7,3 +7,4 @@ requests==2.32.5
 beautifulsoup4==4.14.3  # si utilisé
 openai==2.21.0          # si utilisé
 bcrypt
+flask
