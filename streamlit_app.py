@@ -118,7 +118,7 @@ apply_theme()
 def show_offers():
     st.title("💎 Nos Offres")
 
-    st.info("Clique sur un bouton pour revenir à la page de connexion.")
+    st.info("Clique sur le bouton retour pour revenir à la page de connexion.")
     st.info("Choisis une offre pour procéder à l'achat via notre serveur Discord officiel.")
 
     DISCORD_LINK = "https://discord.gg/KByM47x6Jf"
@@ -283,12 +283,13 @@ if st.session_state.logged_in and "bio_shown" not in st.session_state:
 
     cols = st.columns([1, 1])
 
+    # Bouton "Précédent"
     if cols[0].button("⬅️ Précédent"):
         if st.session_state.guide_index > 0:
             st.session_state.guide_index -= 1
             st.rerun()
 
-  
+    # Bouton "Suivant" ou "Terminer"
     if st.session_state.guide_index < len(guide_pages) - 1:
         if cols[1].button("Suivant ➡️"):
             st.session_state.guide_index += 1
@@ -299,7 +300,14 @@ if st.session_state.logged_in and "bio_shown" not in st.session_state:
             st.session_state.bio_shown = True
             st.rerun()
 
+    # ---------- Nouveau bouton "Passer la présentation" ----------
+    if st.button("⏭️ Passer la présentation"):
+        st.session_state.bio_shown = True
+        st.success("Vous avez passé la présentation. Bienvenue !")
+        st.rerun()
+
     st.stop()
+
 
 
 # SIDEBAR 
@@ -488,6 +496,65 @@ with st.expander("🔎 Recherche logs"):
             st.markdown(f"➡️ {r['answer']}")
             st.markdown("---")
 
-# SIDEBAR DROITE - Articles Science & Histoire
+
+
+import streamlit as st
+import requests
+
+
+# ================= SIDEBAR GAUCHE =================
 with st.sidebar:
-    render_right_sidebar()
+    st.markdown("🌍 **Articles Histoire et Sciences**")
+    st.markdown("🔎 Rechercher un article ")
+
+    # Champ de recherche
+    wiki_query = st.text_input("Mot-clé ou sujet :", key="wiki_query_sidebar")
+
+    if wiki_query:  # On n'effectue la requête que si l'utilisateur tape quelque chose
+        search_url = "https://fr.wikipedia.org/w/api.php"
+        params = {
+            "action": "query",
+            "list": "search",
+            "srsearch": wiki_query,
+            "format": "json",
+            "utf8": 1,
+            "srlimit": 1
+        }
+        headers = {
+            "User-Agent": "HistoriScienceApp/1.0 (contact: admin@example.com)"
+        }
+
+        try:
+            # Requête principale
+            response = requests.get(search_url, params=params, headers=headers, timeout=5)
+            response.raise_for_status()
+            res_json = response.json()
+        except requests.exceptions.RequestException as e:
+            st.error(f"Erreur de requête Wikipédia : {e}")
+            st.stop()
+        except ValueError:
+            st.error("Impossible de parser la réponse Wikipédia.")
+            st.stop()
+
+        # Résultat de recherche
+        search_results = res_json.get("query", {}).get("search")
+        if search_results:
+            page_title = search_results[0]["title"]
+            summary_url = f"https://fr.wikipedia.org/api/rest_v1/page/summary/{page_title}"
+
+            try:
+                summary_res = requests.get(summary_url, headers=headers, timeout=5).json()
+            except Exception as e:
+                st.error(f"Impossible de récupérer le résumé : {e}")
+                st.stop()
+
+            st.markdown(
+                f"### [{summary_res.get('title')}]({summary_res.get('content_urls', {}).get('desktop', {}).get('page', '#')})"
+            )
+            st.markdown(summary_res.get("extract", "Résumé non disponible"))
+            if "thumbnail" in summary_res and summary_res["thumbnail"]:
+                st.image(summary_res["thumbnail"]["source"], width=200)
+        else:
+            st.warning("Article non trouvé directement sur Wikipédia.")
+            wiki_search_link = f"https://fr.wikipedia.org/w/index.php?search={wiki_query.replace(' ', '+')}"
+            st.markdown(f"[Voir tous les résultats sur Wikipédia]({wiki_search_link})")
