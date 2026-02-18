@@ -131,13 +131,13 @@ def show_offers():
 
     with col0:
         st.markdown("### Gratuit")
-        st.markdown(f"**Limite** : {PLAN_LIMITS['free']} messages / heure")
+        st.markdown(f"**Limite** : {PLAN_LIMITS['free']} messages / 12 heure")
         st.markdown("**Prix** : Gratuit")
         st.info("Découvre l'IA avec un usage limité.")
         
     with col1:
         st.markdown("### VIP")
-        st.markdown(f"**Limite** : {PLAN_LIMITS['vip']} messages / heure")
+        st.markdown(f"**Limite** : {PLAN_LIMITS['vip']} messages / 12 heure")
         st.markdown(f"**Prix** : {PLAN_PRICES['vip']}€ / mois")
         st.info("Temps de réponse plus rapide")
         st.success("Redirection vers Discord pour acheter l'offre VIP.")
@@ -146,7 +146,7 @@ def show_offers():
 
     with col2:
         st.markdown("### Premium")
-        st.markdown(f"**Limite** : {PLAN_LIMITS['premium']} messages / heure")
+        st.markdown(f"**Limite** : {PLAN_LIMITS['premium']} messages / 12 heure")
         st.markdown(f"**Prix** : {PLAN_PRICES['premium']}€ / mois")
         st.info("Temps de réponse très rapide")
         st.success("Redirection vers Discord pour acheter l'offre Prenium.")
